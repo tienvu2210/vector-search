@@ -1,5 +1,6 @@
 import json
 import time
+import csv
 # from tqdm import tqdm
 
 from elasticsearch import Elasticsearch
@@ -10,6 +11,9 @@ from elasticsearch.helpers import bulk
 import tensorflow.compat.v1 as tf
 import tensorflow_hub as hub
 import pdb
+import sys
+
+csv.field_size_limit(sys.maxsize)
 
 ##### INDEXING #####
 
@@ -26,14 +30,31 @@ def index_data():
     docs = []
     count = 0
 
+    # with open(DATA_FILE) as data_file:
+    #     for line in data_file:
+    #         line = line.strip()
+    #         pdb.set_trace()
+
+    #         doc = json.loads(line)
+    #         if doc["type"] != "question":
+    #             continue
+
+    #         docs.append(doc)
+    #         count += 1
+
+    #         if count % BATCH_SIZE == 0:
+    #             index_batch(docs)
+    #             docs = []
+    #             print("Indexed {} documents.".format(count))
+
+    #     if docs:
+    #         index_batch(docs)
+    #         print("Indexed {} documents.".format(count))
     with open(DATA_FILE) as data_file:
-        for line in data_file:
-            line = line.strip()
+        reader = csv.DictReader(data_file, delimiter=';')
 
-            doc = json.loads(line)
-            if doc["type"] != "question":
-                continue
-
+        for doc in reader:
+            del doc['body_html']
             docs.append(doc)
             count += 1
 
@@ -44,7 +65,7 @@ def index_data():
 
         if docs:
             index_batch(docs)
-            print("Indexed {} documents.".format(count))
+            print("Indexed {} documents.".format(count))        
 
     client.indices.refresh(index=INDEX_NAME)
     print("Done indexing.")
@@ -52,7 +73,7 @@ def index_data():
 def index_batch(docs):
     # pdb.set_trace()
     titles = [doc["title"] for doc in docs]
-    bodies = [doc["body"] for doc in docs]
+    bodies = [doc["body_text"] for doc in docs]
     title_vectors = embed_text(titles)
     body_vectors = embed_text(bodies)
 
@@ -62,7 +83,7 @@ def index_batch(docs):
         request["_op_type"] = "index"
         request["_index"] = INDEX_NAME
         request["title_vector"] = title_vectors[i]
-        request["body_vector"] = body_vectors[i]
+        request["body_text_vector"] = body_vectors[i]
         requests.append(request)
 
     # pdb.set_trace()
@@ -86,7 +107,7 @@ def dummy_search(search_query):
             "query": search_query,
             "fields": [
                 "title",
-                "body"
+                "body_text"
             ]
         }        
     }
@@ -95,7 +116,7 @@ def dummy_search(search_query):
         index=INDEX_NAME,
         size= SEARCH_SIZE,
         query=query,
-        _source= {"includes": ["title", "body"]}
+        _source= {"includes": ["title", "body_text"]}
     )    
 
     search_time = time.time() - search_start
@@ -113,7 +134,7 @@ def knn_search(search_query):
     # print("embedding time: {:.2f} ms".format(embedding_time * 1000))
 
     script_query = {
-        "field": "body_vector",
+        "field": "body_text_vector",
         "query_vector": query_vector,
         "k": 10,
         "num_candidates": 100            
@@ -122,13 +143,13 @@ def knn_search(search_query):
     response = client.knn_search(
         index=INDEX_NAME,
         knn=script_query,
-        _source= {"includes": ["title", "body"]}
+        _source= {"includes": ["title", "body_text"]}
     )
 
     search_time = time.time() - search_start
     print(f'knn search time {search_time * 1000} ms')    
 
-    return (response, search_time)
+    return (response, search_time - embedding_time)
 
 def handle_query():
     query = input("Enter query: ")
@@ -163,25 +184,22 @@ def handle_query():
     for hit in semantic_response["hits"]["hits"]:
         print("id: {}, score: {}".format(hit["_id"], hit["_score"]))
         print(hit["_source"]['title'])
-        print(hit["_source"]['body'])
+        print(hit["_source"]['body_text'])
         print()
 
 ##### EMBEDDING #####
 
 def embed_text(text):
-    # vectors = session.run(embeddings, feed_dict={text_ph: text})
     vectors = embed(text)
-    # pdb.set_trace()
     return [vector.numpy().tolist() for vector in vectors]
-    # return [vector.tolist() for vector in vectors]
 
 ##### MAIN SCRIPT #####
 
 if __name__ == '__main__':
-    INDEX_NAME = "posts2"
-    INDEX_FILE = "data/posts/index.json"
+    INDEX_NAME = "wikibooks"
+    INDEX_FILE = "data/wikibooks/index.json"
 
-    DATA_FILE = "data/posts/posts.json"
+    DATA_FILE = "data/wikibooks/wikibooks-en.csv"
     BATCH_SIZE = 1000
 
     SEARCH_SIZE = 5
@@ -197,17 +215,17 @@ if __name__ == '__main__':
     embeddings = embed([''])
     print("Done.")
 
-    print("Creating tensorflow session...")
-    config = tf.ConfigProto()
-    config.gpu_options.per_process_gpu_memory_fraction = GPU_LIMIT
-    session = tf.Session(config=config)
-    # session.run(tf.global_variables_initializer())
-    # session.run(tf.tables_initializer())
-    print("Done.")
+    # print("Creating tensorflow session...")
+    # config = tf.ConfigProto()
+    # config.gpu_options.per_process_gpu_memory_fraction = GPU_LIMIT
+    # session = tf.Session(config=config)
+    # # session.run(tf.global_variables_initializer())
+    # # session.run(tf.tables_initializer())
+    # print("Done.")
 
     client = Elasticsearch(["https://localhost:9200"], http_auth=("elastic", "banana"), verify_certs=False, ssl_show_warn=False)
 
-    client.indices.refresh(index=INDEX_NAME)
+    # client.indices.refresh(index=INDEX_NAME)
 
     # index_data()
     run_query_loop()

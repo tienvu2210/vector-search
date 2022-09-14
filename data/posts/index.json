@@ -20,7 +20,9 @@
       },
       "title_vector": {
         "type": "dense_vector",
-        "dims": 512
+        "dims": 512,
+        "index": "true",
+        "similarity": "l2_norm"
       },
       "questionId": {
         "type": "keyword"
@@ -36,6 +38,12 @@
       },
       "body": {
         "type": "text"
+      },
+      "body_vector": {
+        "type": "dense_vector",
+        "dims": 512,
+        "index": "true",
+        "similarity": "l2_norm"
       },
       "type": {
         "type": "keyword"
