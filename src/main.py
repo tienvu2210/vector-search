@@ -1,15 +1,11 @@
 import json
 import time
-# from tqdm import tqdm
 
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
-
-# Use tensorflow 1 behavior to match the Universal Sentence Encoder
-# examples (https://tfhub.dev/google/universal-sentence-encoder/2).
-import tensorflow.compat.v1 as tf
 import tensorflow_hub as hub
-import pdb
+
+# import pdb
 
 ##### INDEXING #####
 
@@ -19,8 +15,6 @@ def index_data():
 
     with open(INDEX_FILE) as index_file:
         source = index_file.read().strip()
-        # print("TIENBOY", source)
-        # pdb.set_trace()
         client.indices.create(index=INDEX_NAME, mappings=eval(source)['mappings'], settings=eval(source)['settings'])
 
     docs = []
@@ -169,11 +163,8 @@ def handle_query():
 ##### EMBEDDING #####
 
 def embed_text(text):
-    # vectors = session.run(embeddings, feed_dict={text_ph: text})
     vectors = embed(text)
-    # pdb.set_trace()
     return [vector.numpy().tolist() for vector in vectors]
-    # return [vector.tolist() for vector in vectors]
 
 ##### MAIN SCRIPT #####
 
@@ -192,26 +183,13 @@ if __name__ == '__main__':
     # embed = hub.Module("https://tfhub.dev/google/universal-sentence-encoder/2")
     embed = hub.load("https://tfhub.dev/google/universal-sentence-encoder/4")
 
-    # text_ph = tf.placeholder(tf.string)
-    # pdb.set_trace()
     embeddings = embed([''])
     print("Done.")
 
-    print("Creating tensorflow session...")
-    config = tf.ConfigProto()
-    config.gpu_options.per_process_gpu_memory_fraction = GPU_LIMIT
-    session = tf.Session(config=config)
-    # session.run(tf.global_variables_initializer())
-    # session.run(tf.tables_initializer())
-    print("Done.")
-
     client = Elasticsearch(["https://localhost:9200"], http_auth=("elastic", "banana"), verify_certs=False, ssl_show_warn=False)
-
     client.indices.refresh(index=INDEX_NAME)
 
     # index_data()
     run_query_loop()
 
-    print("Closing tensorflow session...")
-    # session.close()
     print("Done.")
