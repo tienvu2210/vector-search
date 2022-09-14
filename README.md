@@ -50,14 +50,3 @@ overlap between the query and document title:
 - "translate bytes to doubles" returns "Convert Bytes to Floating Point Numbers in Python"
 
 Note that in other cases, the results can be noisy and unintuitive. For example, "zipping up files" also assigns high scores to "Partial .csproj Files" and "How to avoid .pyc files?".
-
-## Running from Docker
-
-Instead of downloading Elasticsearch and cloning this repository, you can run the following commands to download and run from a Docker container:
-
-```
-docker run --name text_embeddings  -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node"  -d shantanuo/textembeddings
-docker exec -it text_embeddings bash
-cd text-embeddings/
-python3.6 src/main.py
-```
