@@ -6,7 +6,7 @@ import tensorflow_hub as hub
 
 # import pdb
 
-INDEX_NAME = "posts"
+INDEX_NAME = "officequotes"
 BATCH_SIZE = constants.BATCH_SIZE
 SEARCH_SIZE = constants.SEARCH_SIZE
 GPU_LIMIT = constants.GPU_LIMIT

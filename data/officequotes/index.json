@@ -1,0 +1,36 @@
+{
+    "settings": {
+      "number_of_shards": 2,
+      "number_of_replicas": 1
+    },
+     "mappings": {
+      "dynamic": "true",
+      "_source": {
+        "enabled": "true"
+      },
+      "properties": {
+        "character": {
+          "type": "keyword"
+        },
+        "title": {
+          "type": "text"
+        },
+        "title_vector": {
+          "type": "dense_vector",
+          "dims": 512,
+          "index": "true",
+          "similarity": "l2_norm"
+        },
+        "body": {
+          "type": "text"
+        },
+        "body_vector": {
+          "type": "dense_vector",
+          "dims": 512,
+          "index": "true",
+          "similarity": "l2_norm"
+        }
+      }
+    }
+  }
+  
